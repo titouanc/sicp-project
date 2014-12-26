@@ -1,0 +1,8 @@
+*.aux
+*.log
+*.out
+report.pdf
+*-eps-converted-to.pdf
+*.png
+
+*.uploaded
