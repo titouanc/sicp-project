@@ -1,0 +1,7 @@
+digraph virtualpet {
+    Boot -> Awake [label="start"];
+    Awake -> Sleep [label="acceleration < 0.025"];
+    Sleep -> Awake [label="acceleration > 0.05"]
+    Awake -> Play [label="green button"];
+    Play -> Awake [label="correct button pressed"];
+}
