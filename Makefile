@@ -1,6 +1,6 @@
 SRC = lib fsm graphics virtualpet main
 
-UTIL = ./armpit.py
+UTIL = ./utils/armpit.py
 
 .PHONY: all run clean
 
