@@ -1,7 +1,14 @@
 digraph virtualpet {
     Boot -> Awake [label="start"];
-    Awake -> Sleep [label="acceleration < 0.025"];
-    Sleep -> Awake [label="acceleration > 0.05"]
+
+    Awake -> AwakeFlipped [label="accelY > 0.5"];
+    AwakeFlipped -> Sleeping [label="accelY < 0.3 && dt>500"];
+    AwakeFlipped -> Awake [label="accelY < 0.3"];
+
+    Sleeping -> SleepingFlipped [label="accelY> 0.5"];
+    SleepingFlipped -> Sleeping [label="accelY < 0.3"];
+    SleepingFlipped -> Awake [label="accelY < 0.3 && dt>500"];
+
     Awake -> Play [label="green button"];
     Play -> Awake [label="correct button pressed"];
 }

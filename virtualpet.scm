@@ -3,8 +3,8 @@
 (load "graphics.scm")
 
 ;;; Pinout ;;;
-(define x-pin (pin 16)) ; x accel axis
-(define y-pin (pin 17)) ; y accel axis
+(define x-pin (pin 17)) ; x accel axis
+(define y-pin (pin 16)) ; y accel axis
 
 (define but-g-pin (pin 23)) ; Button below green led
 (define but-y-pin (pin 24)) ; Button below yellow led
@@ -34,9 +34,6 @@
 
 
 ;;; Aptitudes ;;;
-(define (is-full aptitude) (aptitude >= 1))
-(define (is-empty aptitude) (aptitude <= 0))
-
 (define happiness 0.75)
 (define submission 0.75)
 (define food 0.75)
@@ -58,13 +55,13 @@
 
 
 ;;; Helpers ;;;
-(define (puts text) (begin (display text) (newline)))
+(define (puts . texts) (begin (map display texts) (newline)))
 (define (remap from-min from-max to-min to-max)
   (lambda (val)
-    (+ to-min (* (- to-max to-min) (/ (- val from-min 0.0) (- from-max from-min))))))
+    (+ to-min (* (- to-max to-min) (/ (- val from-min) (- from-max from-min))))))
 
-(define (get-x) ((remap 110 35500 -1 1) (pulse_in x-pin)))
-(define (get-y) ((remap 110 35500 -1 1) (pulse_in y-pin)))
+(define (get-x) ((remap 10000 26000 -1.0 1.0) (pulse_in x-pin)))
+(define (get-y) ((remap 10000 26000 -1.0 1.0) (pulse_in y-pin)))
 
 (define (rand n) (modulo (pulse_in x-pin) 3))
 
@@ -88,18 +85,23 @@
       (car l))
     l))
 
-; Time since last transition
+; Timestamp of last transition
 (define last-transition-time 0)
 (define (input-func func) (lambda () (begin
   (draw-aptitudes)
   (set! last-transition-time (millis))
   (func))))
 
+(define (state-uptime) (- (millis) last-transition-time))
+
 ; Decorate make-state from fsm with the input function updating last-transition-time
 (define (make-state in-func out-func . transitions)
   ; Concat variable arguments
   (let ((args (cons (input-func in-func) (cons out-func transitions))))
     (apply make-fsm-state args)))
+
+(define (<f a b) (< (inexact->exact a) (inexact->exact b)))
+(define (>f a b) (> (inexact->exact a) (inexact->exact b)))
 ;;; /Helpers ;;;
 
 
@@ -114,17 +116,38 @@
     (display rest)
     (let ((dt (- (millis) last-transition-time)))
       (set! rest (min 1.0 (+ rest (/ dt 3600000.0)))))
-    (display "Rest is now =")
-    (display rest)
+    (puts "Rest is now =" rest)
     (fill-rectangle! 0 0 130 130 #xfff)))))
 
 (define awake-state (make-state
-  (lambda () (begin
-    (show 'red)
-    (puts "Awake !!!")))
-  (lambda () (begin
-    (hide 'red)
-    (puts "No more awake")))))
+  (lambda () (begin (show 'red) (puts "Awake !!!")))
+  (lambda () (begin (hide 'red) (puts "No more awake")))))
+
+(define FLIP-THRES-RISE 0.5)
+(define FLIP-THRES-FALL 0.3)
+(define FLIP-MS 1500)
+
+(define awake-flipped-state (make-state 
+    (lambda () (begin (puts "Awake flipped") (show 'yellow)))
+    (lambda () (begin (puts "Awake unflipped") (hide 'yellow)))
+    (make-fsm-transition 'accel-y (lambda (y) (begin
+      (and (<f y FLIP-THRES-FALL) (> (state-uptime) FLIP-MS)))) sleeping-state)
+    (make-fsm-transition 'accel-y (lambda (y) (<f y FLIP-THRES-FALL)) awake-state)))
+
+(awake-state 'add-transition (make-fsm-transition
+  'accel-y (lambda (y) (>f y FLIP-THRES-RISE)) awake-flipped-state))
+
+(define sleeping-flipped-state (make-state 
+    (lambda () (begin (puts "Sleeping flipped") (show 'yellow)))
+    (lambda () (begin (puts "Sleeping unflipped") (hide 'yellow)))
+    ; After a certain time -> awake
+    (make-fsm-transition 'accel-y (lambda (y) (begin
+      (and (<f y FLIP-THRES-FALL) (> (state-uptime) FLIP-MS)))) awake-state)
+    ; Otherwise go back to sleep
+    (make-fsm-transition 'accel-y (lambda (y) (<f y FLIP-THRES-FALL)) sleeping-state)))
+
+(sleeping-state 'add-transition (make-fsm-transition
+  'accel-y (lambda (y) (>f y FLIP-THRES-RISE)) sleeping-flipped-state))
 
 (define playing-state (make-state
   (lambda () (begin
@@ -135,15 +158,11 @@
     (show playing-color)
     (delayms 250)
     (hide playing-color)
+    ; If found in a short time, increase happiness
+    (if (< (state-uptime) 500)
+      (set! happiness (min 1.0, (+ happiness 0.1)))
+      '())
     (puts "Finished playing")))))
-
-; Wake up if acceleration is significant
-(sleeping-state 'add-transition (make-fsm-transition
-  'accel (lambda (xy) (> (apply max (apply abs xy)) 0.05)) awake-state))
-
-; Go to sleep if horizontal
-(awake-state 'add-transition (make-fsm-transition
-  'accel (lambda (xy) (< (apply max (apply abs xy)) 0.025)) sleeping-state))
 
 ; Play if green button pressed
 (awake-state 'add-transition (make-fsm-transition
@@ -167,6 +186,7 @@
       (set-input-pin! (but-pin ledbut))
       (set-output-pin! (led-pin ledbut))))
     ledbuttons)
+    ; Initialize timer
     ; https://github.com/RaD/ArmpitScheme/blob/master/mcu_specific/LPC_2000/LPC_H2214/board.h#L52
     (write-timer-period milliseconds 58982)
     (start-timer milliseconds)

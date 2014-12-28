@@ -1,5 +1,4 @@
-(define (get-input context input-name)
- (assoc input-name context))
+(define (get-input context input-name) (assoc input-name context))
 (define input-value cdr)
 
 (define (make-finite-state-machine start-state)
@@ -11,13 +10,15 @@
       (map transition-input-name current-transitions))
 
     ;;; feed the FSM with some sensor information (context)
-    (define (feed-context context)
+    (define (feed-context context) (begin
+      (map display (list "Feeding" context))
+      (newline)
       ;; will trigger all transitions that satisfy their predicate with given context
       (for-each (lambda (transition)
         (let ((input (get-input context (transition-input-name transition))))
           (if (and input ((transition-predicate transition) (input-value input)))
             (change-state (transition-state transition)))))
-        current-transitions))
+        current-transitions)))
 
     (define (change-state new-state)
       ;; (if (not (equal? new-state current-state)) ; check for transition to itself
