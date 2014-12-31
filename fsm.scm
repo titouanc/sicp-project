@@ -1,6 +1,14 @@
 (define (get-input context input-name) (assoc input-name context))
 (define input-value cdr)
 
+; Like for-each; but stop if proc returns something true
+(define (while-not proc collection)
+  (if (null? collection)
+    '()
+    (if (proc (car collection))
+      '()
+      (while-not proc (cdr collection)))))
+
 (define (make-finite-state-machine start-state)
   (let ((current-state start-state)
         (current-transitions (start-state 'transitions)))
@@ -11,13 +19,12 @@
 
     ;;; feed the FSM with some sensor information (context)
     (define (feed-context context) (begin
-      (map display (list "Feeding" context))
-      (newline)
       ;; will trigger all transitions that satisfy their predicate with given context
-      (for-each (lambda (transition)
+      (while-not (lambda (transition)
         (let ((input (get-input context (transition-input-name transition))))
           (if (and input ((transition-predicate transition) (input-value input)))
-            (change-state (transition-state transition)))))
+            (change-state (transition-state transition))
+            #f)))
         current-transitions)))
 
     (define (change-state new-state)
@@ -26,7 +33,8 @@
         (current-state 'exit-action)
         (new-state 'entry-action)
         (set! current-transitions (new-state 'transitions))
-        (set! current-state new-state)))
+        (set! current-state new-state)
+        #t))
 
   (lambda (msg . args) 
     (case msg
