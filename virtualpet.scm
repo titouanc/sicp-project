@@ -16,9 +16,9 @@
 
 ; Led-Button association
 (define ledbuttons (list
-    (list 'yellow but-y-pin led-y-pin)
-    (list 'red    but-r-pin led-r-pin)
-    (list 'green  but-g-pin led-g-pin)))
+  (list 'green  but-g-pin led-g-pin)
+  (list 'yellow but-y-pin led-y-pin)
+  (list 'red    but-r-pin led-r-pin)))
 
 (define ledname car)
 (define but-pin cadr)
@@ -34,6 +34,16 @@
 
 
 ;;; Aptitudes ;;;
+(define TIME-DIV 3600000.0)
+
+; Return x times incremented aptitude based on time since last change
+(define (incx aptitude x) (min 1.0 (+ aptitude (* x (/ (state-uptime) TIME-DIV)))))
+(define (inc aptitude) (incx aptitude 1))
+
+; Return x times decremented aptitude based on time since last change
+(define (decx aptitude x) (max 0.0 (- aptitude (* x (/ (state-uptime) TIME-DIV)))))
+(define (dec aptitude) (decx aptitude 1))
+
 (define happiness 0.75)
 (define submission 0.75)
 (define food 0.75)
@@ -41,11 +51,12 @@
 (define rest 0.75)
 
 (define (draw-aptitudes) (begin
-  ((make-bar 5 5 120 5 1)  (list (cons #xff0 happiness)))
-  ((make-bar 5 11 120 5 1) (list (cons #xf0f submission)))
-  ((make-bar 5 17 120 5 1) (list (cons #xf00 food)))
-  ((make-bar 5 23 120 5 1) (list (cons #x0f0 health)))
-  ((make-bar 5 29 120 5 1) (list (cons #x00f rest)))))
+  (draw-happiness happiness)
+  (draw-rest rest)
+  (draw-submission submission)
+  (draw-food food)
+  (draw-health health)
+))
 
 (define playing-color 'nocolor)
 (define (choose-color)
@@ -112,34 +123,35 @@
     (puts "Going to sleep ZzzzZZzzz...")
     (fill-rectangle! 0 0 130 130 #x000)))
   (lambda () (begin
-    (display "Finished sleep ! Rest =")
-    (display rest)
-    (let ((dt (- (millis) last-transition-time)))
-      (set! rest (min 1.0 (+ rest (/ dt 3600000.0)))))
-    (puts "Rest is now =" rest)
+    (set! rest (inc rest 2))
+    (puts "Finished sleep. Rest is now =" rest)
     (fill-rectangle! 0 0 130 130 #xfff)))))
 
 (define awake-state (make-state
   (lambda () (begin (show 'red) (puts "Awake !!!")))
-  (lambda () (begin (hide 'red) (puts "No more awake")))))
+  (lambda () (begin 
+    (hide 'red)
+    (set! rest (dec rest))
+    (set! food (dec food))
+    (puts "No more awake")))))
 
 (define FLIP-THRES-RISE 0.5)
 (define FLIP-THRES-FALL 0.3)
 (define FLIP-MS 1500)
 
 (define awake-flipped-state (make-state 
-    (lambda () (begin (puts "Awake flipped") (show 'yellow)))
-    (lambda () (begin (puts "Awake unflipped") (hide 'yellow)))
-    (make-fsm-transition 'accel-y (lambda (y) (begin
-      (and (<f y FLIP-THRES-FALL) (> (state-uptime) FLIP-MS)))) sleeping-state)
-    (make-fsm-transition 'accel-y (lambda (y) (<f y FLIP-THRES-FALL)) awake-state)))
+  (lambda () (begin (puts "Awake flipped") (show 'yellow)))
+  (lambda () (hide 'yellow))
+  (make-fsm-transition 'accel-y (lambda (y) (begin
+    (and (<f y FLIP-THRES-FALL) (> (state-uptime) FLIP-MS)))) sleeping-state)
+  (make-fsm-transition 'accel-y (lambda (y) (<f y FLIP-THRES-FALL)) awake-state)))
 
 (awake-state 'add-transition (make-fsm-transition
   'accel-y (lambda (y) (>f y FLIP-THRES-RISE)) awake-flipped-state))
 
 (define sleeping-flipped-state (make-state 
     (lambda () (begin (puts "Sleeping flipped") (show 'yellow)))
-    (lambda () (begin (puts "Sleeping unflipped") (hide 'yellow)))
+    (lambda () (hide 'yellow))
     ; After a certain time -> awake
     (make-fsm-transition 'accel-y (lambda (y) (begin
       (and (<f y FLIP-THRES-FALL) (> (state-uptime) FLIP-MS)))) awake-state)
@@ -151,17 +163,24 @@
 
 (define playing-state (make-state
   (lambda () (begin
+    (puts "Entering playing-state...")
     (choose-color)
-    (display "Playing")
-    (puts playing-color)))
+    (puts "Choosed color:" playing-color)
+    (for-each 
+      (lambda (ledbut) (begin
+        (puts ledbut)
+        (set-pin! (led-pin ledbut)) 
+        (delayms 50) 
+        (clear-pin! (led-pin ledbut)) 
+        (delayms 50)))
+      ledbuttons)
+    (puts "Playing" playing-color)))
   (lambda () (begin
     (show playing-color)
     (delayms 250)
     (hide playing-color)
     ; If found in a short time, increase happiness
-    (if (< (state-uptime) 500)
-      (set! happiness (min 1.0, (+ happiness 0.1)))
-      '())
+    (if (< (state-uptime) 750) (set! happiness (min 1.0, (+ happiness 0.1))))
     (puts "Finished playing")))))
 
 ; Play if green button pressed
@@ -177,20 +196,22 @@
       awake-state))))
   ledbuttons)
 
-
 (define boot-state (make-state
   (lambda () (puts "Boot..."))
   (lambda () (begin
     ; Set I/O directions
-    (map (lambda (ledbut) (begin
-      (set-input-pin! (but-pin ledbut))
-      (set-output-pin! (led-pin ledbut))))
-    ledbuttons)
+    (for-each (lambda (ledbut) 
+      (begin
+        (set-input-pin! (but-pin ledbut))
+        (set-output-pin! (led-pin ledbut))))
+      ledbuttons)
     ; Initialize timer
     ; https://github.com/RaD/ArmpitScheme/blob/master/mcu_specific/LPC_2000/LPC_H2214/board.h#L52
     (write-timer-period milliseconds 58982)
     (start-timer milliseconds)
     (clear-screen)
+    (draw-eye 33 110)
+    (draw-eye 97 110)
     (puts "Initialised")))
   (make-fsm-transition 'start always awake-state)))
 ;;; /States ;;;
