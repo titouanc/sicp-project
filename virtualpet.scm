@@ -89,7 +89,7 @@
     (puts "Playing" playing-color)))
   (lambda () (begin
     (show playing-color)
-    (delayms 250)
+    (delayms 500)
     (hide playing-color)
     ; If found in a short time, increase happiness
     (if (< (state-uptime) 1000) (begin 
@@ -115,6 +115,8 @@
   (lambda () (show 'red))
   (lambda () (begin 
     (set! food (min 1.0 (+ food 0.25)))
+    ; He doesn't like vegetables
+    (set! submission (max 0.0 (- submission 0.05)))
     (delayms 500)
     (hide 'red)))
   (make-fsm-transition 'heartbeat always awake-state)))
@@ -124,6 +126,7 @@
   (lambda () (begin 
     (set! food (min 1.0 (+ food 0.1))) 
     (set! health (max 0.0 (- health 0.05)))
+    (set! submission (incx submission 30))
     (delayms 500)
     (hide 'green)))
   (make-fsm-transition 'heartbeat always awake-state)))
@@ -163,7 +166,6 @@
   ledbuttons)
 
 (awake-state 'add-transition (make-fsm-transition 'heartbeat need-attention? need-attention-state))
-(playing-state 'add-transition (make-fsm-transition 'heartbeat need-attention? need-attention-state))
 
 
 ;;; Initialization

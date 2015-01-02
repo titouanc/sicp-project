@@ -18,7 +18,7 @@
 (define (state-uptime) (- (millis) last-transition-time))
 
 (define TIME-DIV 3600000.0)
-(define TIME-AFFECTIVE 600000)
+(define TIME-AFFECTIVE 180000)
 
 ; Return x times incremented aptitude based on time since last change
 (define (incx aptitude x) (min 1.0 (+ aptitude (* x (/ (state-uptime) TIME-DIV)))))
