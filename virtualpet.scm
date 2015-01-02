@@ -45,7 +45,7 @@
   (lambda () (begin 
     (hide 'red)
     (set! rest (dec rest))
-    (set! food (dec food))
+    (set! food (decx food 2))
     (puts "No more awake")))))
 
 (define awaking-state (make-state 
@@ -53,6 +53,8 @@
   do-nothing
   (make-fsm-transition 'heartbeat always awake-state)))
 
+
+;;; Flip for sleep/awakening
 (define FLIP-THRES-RISE 0.5)
 (define FLIP-THRES-FALL 0.3)
 (define FLIP-MS 1500)
@@ -67,7 +69,6 @@
 (awake-state 'add-transition (make-fsm-transition
   'accel-y (lambda (y) (>f y FLIP-THRES-RISE)) awake-flipped-state))
 
-
 (define sleeping-flipped-state (make-state 
     (lambda () (begin (puts "Sleeping flipped") (show 'yellow)))
     (lambda () (hide 'yellow))
@@ -80,7 +81,7 @@
 (sleeping-state 'add-transition (make-fsm-transition
   'accel-y (lambda (y) (>f y FLIP-THRES-RISE)) sleeping-flipped-state))
 
-
+;;; Play
 (define playing-state (make-state
   (lambda () (begin
     (choose-color)
@@ -96,7 +97,52 @@
       (set! happiness (min 1.0, (+ happiness 0.1)))))
     (puts "Finished playing")))))
 
+; Play if green button pressed
+(awake-state 'add-transition (make-fsm-transition
+  'green identity playing-state))
 
+; Stop playing if correct button pressed
+(for-each (lambda (ledbut)
+  (let ((color (ledname ledbut)))
+    (playing-state 'add-transition (make-fsm-transition
+      color 
+      (lambda (active) (and active (string=? playing-color color)))
+      awake-state))))
+  ledbuttons)
+
+;;; f00d
+(define meal-state (make-state
+  (lambda () (show 'red))
+  (lambda () (begin 
+    (set! food (min 1.0 (+ food 0.25)))
+    (delayms 500)
+    (hide 'red)))
+  (make-fsm-transition 'heartbeat always awake-state)))
+
+(define snack-state (make-state
+  (lambda () (show 'green))
+  (lambda () (begin 
+    (set! food (min 1.0 (+ food 0.1))) 
+    (set! health (max 0.0 (- health 0.05)))
+    (delayms 500)
+    (hide 'green)))
+  (make-fsm-transition 'heartbeat always awake-state)))
+
+(define choose-food-state (make-state
+  (lambda () (begin
+    (show 'red)
+    (show 'green)
+    (puts "Choose some food: red for a complete meal green for a snack")))
+  (lambda () (begin
+    (hide 'red)
+    (hide 'green)))
+  (make-fsm-transition 'red always meal-state)
+  (make-fsm-transition 'green always snack-state)))
+
+(awake-state 'add-transition (make-fsm-transition 'yellow always choose-food-state))
+
+
+;;; Need for attention
 (define (need-attention? nothing)
   (reduce or #f (list
     (>= (state-uptime) TIME-AFFECTIVE)
@@ -111,7 +157,6 @@
   (make-fsm-transition 'accel-x always awake-state)
   (make-fsm-transition 'heartbeat (lambda (x) (begin (animate-leds) #f)) do-nothing)))
 
-; Awake (no need for attention) if button pressed
 (for-each 
   (lambda (ledbut) (need-attention-state 'add-transition (make-fsm-transition
     (ledname ledbut) identity awake-state)))
@@ -120,19 +165,8 @@
 (awake-state 'add-transition (make-fsm-transition 'heartbeat need-attention? need-attention-state))
 (playing-state 'add-transition (make-fsm-transition 'heartbeat need-attention? need-attention-state))
 
-; Play if green button pressed
-(awake-state 'add-transition (make-fsm-transition
-  'green identity playing-state))
 
-; Stop playing if correct button pressed
-(for-each (lambda (ledbut)
-  (let ((color (ledname ledbut)))
-    (playing-state 'add-transition (make-fsm-transition
-      color 
-      (lambda (active) (and active (string=? playing-color color)))
-      awake-state))))
-  ledbuttons)
-
+;;; Initialization
 (define boot-state (make-state
   (lambda () (puts "Boot..."))
   (lambda () (begin
