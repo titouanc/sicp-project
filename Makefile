@@ -1,4 +1,4 @@
-SRC = lib fsm graphics virtualpet main
+SRC = main $(shell ./make-deps.sh main.scm)
 FIGURES = $(shell grep includegraphics *.tex | cut -d '{' -f 2 | cut -d '}' -f 1)
 
 UTIL = ./utils/armpit.py
