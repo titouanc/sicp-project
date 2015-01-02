@@ -1,6 +1,6 @@
 (load "virtualpet.scm")
 
-(define virtual-pet (make-virtual-pet))
+(define virtual-pet (make-finite-state-machine boot-state))
 (puts "Created new virtualpet")
 
 (define (feed-if-changed sense is-different? name)
@@ -24,10 +24,14 @@
 (define feed-accel-x (feed-if-changed get-x (min-diff 0.1) 'accel-x))
 (define feed-accel-y (feed-if-changed get-y (min-diff 0.1) 'accel-y))
 
-(define feeders (cons feed-accel-x (cons feed-accel-y feed-buttons)))
+(define feed-heartbeat (feed-if-changed millis (min-diff 1000) 'heartbeat))
+
+(define feeders (cons feed-heartbeat (cons feed-accel-x (cons feed-accel-y feed-buttons))))
 
 (define (mainloop) (begin
   (for-each (lambda (proc) (proc)) feeders)
   (mainloop)))
 
+(virtual-pet 'feed-context (list (cons 'start #t)))
+(puts "=== Started ===")
 (mainloop)

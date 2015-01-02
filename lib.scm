@@ -124,5 +124,3 @@
     (send-command CASET x1 x2)
     (send-command RAMWR)         
     (send-byte-n A B C i)))
-
-(init-lcd)

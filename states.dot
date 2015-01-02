@@ -1,14 +1,25 @@
 digraph virtualpet {
-    Boot -> Awake [label="start"];
+    Boot -> Awaking [label="start"];
+    Awaking -> Awake [label="heartbeat", color="pink"];
 
-    Awake -> AwakeFlipped [label="accelY > 0.5"];
-    AwakeFlipped -> Awake [label="accelY < 0.3"];
-    AwakeFlipped -> Sleeping [label="accelY < 0.3 && dT"];
+    Awake -> AwakeFlipped [label="accelY > 0.5", color="cyan"];
+    AwakeFlipped -> Awake [label="accelY < 0.3", color="cyan"];
+    AwakeFlipped -> Sleeping [label="accelY < 0.3 && dT > 1.5s"];
 
-    Sleeping -> SleepingFlipped [label="accelY > 0.5"];
-    SleepingFlipped -> Sleeping [label="accelY < 0.3"];
-    SleepingFlipped -> Awake [label="accelY < 0.3 && dT"];
+    Sleeping -> SleepingFlipped [label="accelY > 0.5", color="cyan"];
+    SleepingFlipped -> Sleeping [label="accelY < 0.3", color="cyan"];
+    SleepingFlipped -> Awaking [label="accelY < 0.3 && dT > 1.5s"];
 
-    Awake -> Play [label="green button"];
+    Awake -> Play [label="button", color="green"];
     Play -> Awake [label="correct button"];
+
+    Awake -> NeedAttention [label="heartbeat", color="pink"];
+    Play -> NeedAttention [label="heartbeat", color="pink"];
+    NeedAttention -> Awake [label="NOT heartbeat"];
+
+    Awake -> ChooseFood [label="button", color="yellow"];
+    ChooseFood -> Snack [label="button", color="green"];
+    ChooseFood -> Meal  [label="button", color="red"];
+    Snack -> Awake [label="heartbeat", color="pink"];
+    Meal -> Awake [label="heartbeat", color="pink"];
 }

@@ -51,6 +51,7 @@
 
 (define (do-nothing) '())
 (define (always . args) #t)
+(define identity (lambda (x) x))
 
 ;;; State takes at least 2 arguments
 ;;;  entry-action: zero argument procedure (thunk)
