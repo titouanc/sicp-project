@@ -13,6 +13,7 @@ digraph virtualpet {
     Awake -> Play [label="button", color="green"];
     Play -> Awake [label="correct button"];
 
+    Sleeping -> NeedAttention [label="heartbeat", color="pink"];
     Awake -> NeedAttention [label="heartbeat", color="pink"];
     NeedAttention -> Awake [label="NOT heartbeat"];
 
@@ -23,5 +24,10 @@ digraph virtualpet {
     Meal -> Awake [label="heartbeat", color="pink"];
 
     Awake -> Revolt [label="heartbeat submission<0.1", color="pink"];
-    Revolt -> Awake [label="hug", color="cyan"]
+    Revolt -> Awake [label="hug", color="cyan"];
+
+    Awake -> Dead [label="dying", color="pink"];
+    Sleeping -> Dead [label="dying", color="pink"];
+    Play -> Dead [label="dying", color="pink"];
+    ChooseFood -> Dead [label="dying", color="pink"];
 }

@@ -24,7 +24,7 @@
 (define feed-accel-x (feed-if-changed get-x (min-diff 0.1) 'accel-x))
 (define feed-accel-y (feed-if-changed get-y (min-diff 0.1) 'accel-y))
 
-(define feed-heartbeat (feed-if-changed millis (min-diff 1000) 'heartbeat))
+(define feed-heartbeat (feed-if-changed millis (min-diff HEARTBEAT-PERIOD-MS) 'heartbeat))
 
 (define feeders (cons feed-heartbeat (cons feed-accel-x (cons feed-accel-y feed-buttons))))
 

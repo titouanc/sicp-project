@@ -20,6 +20,7 @@
 ; Divisor for time-based aptitudes evolution
 (define TIME-DIV 360000.0)
 (define TIME-AFFECTIVE 180000)
+(define HEARTBEAT-PERIOD-MS 2000) 
 
 ; Return x times incremented aptitude based on time since last change
 (define (incx aptitude x) (min 1.0 (+ aptitude (* x (/ (state-uptime) TIME-DIV)))))

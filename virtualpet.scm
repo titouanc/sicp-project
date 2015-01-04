@@ -38,7 +38,11 @@
     (set! rest (incx rest 2))
     (set! happiness (dec happiness))
     (set! food (dec food))
-    (puts "Finished sleep. Rest is now =" rest)))))
+    (puts "Finished sleep. Rest is now =" rest)))
+  (make-fsm-transition 'heartbeat (lambda (unused) (begin
+    (clear-eyes)
+    (draw-sleepZ)
+    #f)) do-nothing)))
 
 (define awake-state (make-state
   (lambda () (begin 
@@ -158,7 +162,7 @@
 
 ;;; Need for attention
 (define (need-attention? nothing)
-  (and (> 5000 (state-uptime)) (reduce or #f (list
+  (and (> 15000 (state-uptime)) (reduce or #f (list
     (>= (state-uptime) TIME-AFFECTIVE)
     (map (lambda (x) (< x 0.125)) (all-aptitudes))))))
 
@@ -177,6 +181,9 @@
   ledbuttons)
 
 (awake-state 'add-transition (make-fsm-transition 
+  'heartbeat need-attention? need-attention-state))
+
+(sleeping-state 'add-transition (make-fsm-transition 
   'heartbeat need-attention? need-attention-state))
 
 ;;; Initialization
