@@ -103,8 +103,8 @@
 (define (clear-eyes) 
   (if (string=? CURRENT-EYES 'eyes)
     (begin
-      (fill-rectangle! 23 100 20 20 #xfff)
-      (fill-rectangle! 77 100 20 20 #xfff))
+      (fill-rectangle! 21 98 24 24 #xfff)
+      (fill-rectangle! 85 98 24 24 #xfff))
     (fill-rectangle! 54 87 53 43 #xfff)))
 
 (define draw-rest (make-bar 5 5 120 5 1 #x00f))
