@@ -17,7 +17,8 @@
 
 (define (state-uptime) (- (millis) last-transition-time))
 
-(define TIME-DIV 3600000.0)
+; Divisor for time-based aptitudes evolution
+(define TIME-DIV 360000.0)
 (define TIME-AFFECTIVE 180000)
 
 ; Return x times incremented aptitude based on time since last change

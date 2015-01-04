@@ -6,6 +6,10 @@
 
 (define (rand n) (modulo (pulse_in x-pin) n))
 
+(define (int x)
+  (if (= x 0) 0 (round (inexact->exact x))))
+
+; Like foldr but traverse nested lists
 (define (reduce proc initial a_list)
   (if (null? a_list) 
     initial
@@ -16,8 +20,8 @@
 
 (define (input-func func) (lambda () (begin
   (set! last-transition-time (millis))
-  (func)
-  (draw-aptitudes))))
+  (draw-aptitudes)
+  (func))))
 
 ; Decorate make-state from fsm with the input function updating last-transition-time
 (define (make-state in-func out-func . transitions)
@@ -35,3 +39,13 @@
 
 (define (<f a b) (< (inexact->exact a) (inexact->exact b)))
 (define (>f a b) (> (inexact->exact a) (inexact->exact b)))
+
+(define (if-changed changed? act)
+  (let ((last-value (sense)))
+    (lambda (current-value)
+      (if (change? last-value current-value)
+        (begin
+          (act current-value)
+          (set! last-value current-value)
+          #t)
+        #f))))

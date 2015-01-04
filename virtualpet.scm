@@ -21,9 +21,11 @@
   (draw-food food)
   (draw-health health)))
 
-(define playing-color 'nocolor)
-(define (choose-color)
-  (set! playing-color (ledname ([] ledbuttons (rand 3)))))
+(define playing-color 'nocolor) ; The color choosed for the game
+(define playing-tries 0) ; Number of tries in game by user
+(define (choose-color) (begin
+  (set! playing-tries 0)
+  (set! playing-color (ledname ([] ledbuttons (rand 3))))))
 ;;; /Aptitudes ;;;
 
 ;;; States ;;;
@@ -40,13 +42,21 @@
 
 (define awake-state (make-state
   (lambda () (begin 
-    (show 'red) 
+    (show 'green)
+    (show 'yellow) 
     (puts "Awake !!!")))
   (lambda () (begin 
-    (hide 'red)
+    (hide 'green)
+    (hide 'yellow)
     (set! rest (dec rest))
     (set! food (decx food 2))
     (puts "No more awake")))))
+
+(define dead-state (make-state
+  (lambda () (begin 
+    (puts "The death has come. Say goodbye to the livings")
+    (fill-rectangle! 0 0 130 130 #xf00)))
+  do-nothing))
 
 (define awaking-state (make-state 
   (lambda () (begin (clear-eyes) (draw-eyes))) 
@@ -60,8 +70,8 @@
 (define FLIP-MS 1500)
 
 (define awake-flipped-state (make-state 
-  (lambda () (begin (puts "Awake flipped") (show 'yellow)))
-  (lambda () (hide 'yellow))
+  do-nothing
+  do-nothing
   (make-fsm-transition 'accel-y (lambda (y) (begin
     (and (<f y FLIP-THRES-FALL) (> (state-uptime) FLIP-MS)))) sleeping-state)
   (make-fsm-transition 'accel-y (lambda (y) (<f y FLIP-THRES-FALL)) awake-state)))
@@ -70,8 +80,8 @@
   'accel-y (lambda (y) (>f y FLIP-THRES-RISE)) awake-flipped-state))
 
 (define sleeping-flipped-state (make-state 
-    (lambda () (begin (puts "Sleeping flipped") (show 'yellow)))
-    (lambda () (hide 'yellow))
+    do-nothing
+    do-nothing
     ; After a certain time -> awake
     (make-fsm-transition 'accel-y (lambda (y) (begin
       (and (<f y FLIP-THRES-FALL) (> (state-uptime) FLIP-MS)))) awaking-state)
@@ -89,24 +99,25 @@
     (puts "Playing" playing-color)))
   (lambda () (begin
     (show playing-color)
+    ; If found at first try in a short time, increase happiness
+    (if (and (< (state-uptime) 1000) (= playing-tries 1)) 
+      (set! happiness (min 1.0, (+ happiness 0.1))))
     (delayms 500)
     (hide playing-color)
-    ; If found in a short time, increase happiness
-    (if (< (state-uptime) 1000) (begin 
-      (puts "I'm more happy:" happiness "is now" (min 1.0, (+ happiness 0.1)))
-      (set! happiness (min 1.0, (+ happiness 0.1)))))
     (puts "Finished playing")))))
 
 ; Play if green button pressed
 (awake-state 'add-transition (make-fsm-transition
   'green identity playing-state))
 
-; Stop playing if correct button pressed
+; Count tries, stop playing if correct button pressed
 (for-each (lambda (ledbut)
   (let ((color (ledname ledbut)))
     (playing-state 'add-transition (make-fsm-transition
       color 
-      (lambda (active) (and active (string=? playing-color color)))
+      (lambda (active) (begin
+        (if active (set! playing-tries (+ playing-tries 1))) 
+        (and active (string=? playing-color color))))
       awake-state))))
   ledbuttons)
 
@@ -119,37 +130,37 @@
     (set! submission (max 0.0 (- submission 0.05)))
     (delayms 500)
     (hide 'red)))
-  (make-fsm-transition 'heartbeat always awake-state)))
+  (make-fsm-transition 'heartbeat identity awake-state)))
 
 (define snack-state (make-state
   (lambda () (show 'green))
   (lambda () (begin 
     (set! food (min 1.0 (+ food 0.1))) 
     (set! health (max 0.0 (- health 0.05)))
-    (set! submission (incx submission 30))
+    ; He loves snacks, especially when he has to wait a lot
+    (set! submission (inc submission))
     (delayms 500)
     (hide 'green)))
-  (make-fsm-transition 'heartbeat always awake-state)))
+  (make-fsm-transition 'heartbeat identity awake-state)))
 
 (define choose-food-state (make-state
   (lambda () (begin
     (show 'red)
-    (show 'green)
-    (puts "Choose some food: red for a complete meal green for a snack")))
+    (show 'green)))
   (lambda () (begin
     (hide 'red)
     (hide 'green)))
-  (make-fsm-transition 'red always meal-state)
-  (make-fsm-transition 'green always snack-state)))
+  (make-fsm-transition 'red identity meal-state)
+  (make-fsm-transition 'green identity snack-state)))
 
-(awake-state 'add-transition (make-fsm-transition 'yellow always choose-food-state))
+(awake-state 'add-transition (make-fsm-transition 'yellow identity choose-food-state))
 
 
 ;;; Need for attention
 (define (need-attention? nothing)
-  (reduce or #f (list
+  (and (> 5000 (state-uptime)) (reduce or #f (list
     (>= (state-uptime) TIME-AFFECTIVE)
-    (map (lambda (x) (< x 0.125)) (all-aptitudes)))))
+    (map (lambda (x) (< x 0.125)) (all-aptitudes))))))
 
 (define need-attention-state (make-state
   (lambda () (begin (puts "I need attention !")))
@@ -158,15 +169,15 @@
     (set! happiness (decx happiness 2))))
   (make-fsm-transition 'accel-y always awake-state)
   (make-fsm-transition 'accel-x always awake-state)
-  (make-fsm-transition 'heartbeat (lambda (x) (begin (animate-leds) #f)) do-nothing)))
+  (make-fsm-transition 'heartbeat animate-leds do-nothing)))
 
 (for-each 
   (lambda (ledbut) (need-attention-state 'add-transition (make-fsm-transition
     (ledname ledbut) identity awake-state)))
   ledbuttons)
 
-(awake-state 'add-transition (make-fsm-transition 'heartbeat need-attention? need-attention-state))
-
+(awake-state 'add-transition (make-fsm-transition 
+  'heartbeat need-attention? need-attention-state))
 
 ;;; Initialization
 (define boot-state (make-state
@@ -185,4 +196,10 @@
     (clear-screen)
     (puts "Initialised")))
   (make-fsm-transition 'start always awaking-state)))
+
+(define dying? (lambda (x) (reduce (lambda (res x) (or res (= x 0))) #f (all-aptitudes))))
+(for-each 
+  (lambda (state) (state 'add-transition 
+    (make-fsm-transition 'heartbeat dying? dead-state)))
+  (list awake-state playing-state sleeping-state choose-food-state))
 ;;; /States ;;;

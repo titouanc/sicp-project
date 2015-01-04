@@ -39,11 +39,12 @@
 (define (get-x) ((remap 10000 26000 -1.0 1.0) (pulse_in x-pin)))
 (define (get-y) ((remap 10000 26000 -1.0 1.0) (pulse_in y-pin)))
 
-(define (animate-leds)
+(define (animate-leds) (begin
   (for-each 
     (lambda (ledbut) (begin
       (set-pin! (led-pin ledbut)) 
       (delayms 50) 
       (clear-pin! (led-pin ledbut)) 
       (delayms 50)))
-    ledbuttons))
+    ledbuttons)
+  #f))

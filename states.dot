@@ -14,7 +14,6 @@ digraph virtualpet {
     Play -> Awake [label="correct button"];
 
     Awake -> NeedAttention [label="heartbeat", color="pink"];
-    Play -> NeedAttention [label="heartbeat", color="pink"];
     NeedAttention -> Awake [label="NOT heartbeat"];
 
     Awake -> ChooseFood [label="button", color="yellow"];
@@ -22,4 +21,7 @@ digraph virtualpet {
     ChooseFood -> Meal  [label="button", color="red"];
     Snack -> Awake [label="heartbeat", color="pink"];
     Meal -> Awake [label="heartbeat", color="pink"];
+
+    Awake -> Revolt [label="heartbeat submission<0.1", color="pink"];
+    Revolt -> Awake [label="hug", color="cyan"]
 }
