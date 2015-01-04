@@ -43,14 +43,15 @@
     (lambda (happiness)
       (let ((h (* 0.03 (- happiness 0.5))))
         (if (= previous-happiness h)
-          (puts "Don't redraw smile (happiness didn't change much from" previous-happiness "to" h ")")
+          #f
           (begin
             ; Erase previous smile
             (draw-func #xfff 10 120 (parabola 65 70 previous-happiness))
             ; Draw new one
             (draw-func #x000 10 120 (parabola 65 70 h))
             ; Store value to erase it later
-            (set! previous-happiness h)))))))
+            (set! previous-happiness h)
+            #t))))))
 
 (define (draw-eye cx cy)
   (for-i 2 10 

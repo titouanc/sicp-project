@@ -30,4 +30,7 @@ digraph virtualpet {
     Sleeping -> Dead [label="dying", color="pink"];
     Play -> Dead [label="dying", color="pink"];
     ChooseFood -> Dead [label="dying", color="pink"];
+
+    Awake -> Pooping [label="random", color="pink"];
+    Pooping -> Awake [label="heartbeat", color="pink"];
 }

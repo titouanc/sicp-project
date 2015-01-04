@@ -11,6 +11,7 @@
 (define food 0.75)
 (define health 0.75)
 (define rest 0.75)
+(define poops 0)
 
 (define (all-aptitudes) (list happiness submission food health rest))
 
@@ -47,8 +48,7 @@
 (define awake-state (make-state
   (lambda () (begin 
     (show 'green)
-    (show 'yellow) 
-    (puts "Awake !!!")))
+    (show 'yellow)))
   (lambda () (begin 
     (hide 'green)
     (hide 'yellow)
@@ -62,8 +62,8 @@
     (fill-rectangle! 0 0 130 130 #xf00)))
   do-nothing))
 
-(define awaking-state (make-state 
-  (lambda () (begin (clear-eyes) (draw-eyes))) 
+(define awaking-state (make-state
+  (lambda () (begin (puts "Awaking") (clear-eyes) (draw-eyes))) 
   do-nothing
   (make-fsm-transition 'heartbeat always awake-state)))
 
@@ -134,7 +134,7 @@
     (set! submission (max 0.0 (- submission 0.05)))
     (delayms 500)
     (hide 'red)))
-  (make-fsm-transition 'heartbeat identity awake-state)))
+  (make-fsm-transition 'heartbeat always awake-state)))
 
 (define snack-state (make-state
   (lambda () (show 'green))
@@ -142,10 +142,10 @@
     (set! food (min 1.0 (+ food 0.1))) 
     (set! health (max 0.0 (- health 0.05)))
     ; He loves snacks, especially when he has to wait a lot
-    (set! submission (inc submission))
+    (set! submission (incx submission 5))
     (delayms 500)
     (hide 'green)))
-  (make-fsm-transition 'heartbeat identity awake-state)))
+  (make-fsm-transition 'heartbeat always awake-state)))
 
 (define choose-food-state (make-state
   (lambda () (begin
@@ -161,24 +161,30 @@
 
 
 ;;; Need for attention
-(define (need-attention? nothing)
-  (and (> 15000 (state-uptime)) (reduce or #f (list
+(define (need-attention? unused)
+  (reduce or #f (list
     (>= (state-uptime) TIME-AFFECTIVE)
-    (map (lambda (x) (< x 0.125)) (all-aptitudes))))))
+    (map (lambda (x) (< x 0.125)) (all-aptitudes)))))
 
 (define need-attention-state (make-state
   (lambda () (begin (puts "I need attention !")))
   (lambda () (begin 
     (puts "I don't need attention anymore")
     (set! happiness (decx happiness 2))))
-  (make-fsm-transition 'accel-y always awake-state)
-  (make-fsm-transition 'accel-x always awake-state)
+  (make-fsm-transition 'accel-y always awaking-state)
+  (make-fsm-transition 'accel-x always awaking-state)
   (make-fsm-transition 'heartbeat animate-leds do-nothing)))
 
+; No need for attention if ledbutton pressed
 (for-each 
   (lambda (ledbut) (need-attention-state 'add-transition (make-fsm-transition
     (ledname ledbut) identity awake-state)))
   ledbuttons)
+
+(for-each 
+  (lambda (state) (state 'add-transition 
+    (make-fsm-transition 'heartbeat need-attention? dead-state)))
+  (list awake-state sleeping-state))
 
 (awake-state 'add-transition (make-fsm-transition 
   'heartbeat need-attention? need-attention-state))
@@ -186,9 +192,18 @@
 (sleeping-state 'add-transition (make-fsm-transition 
   'heartbeat need-attention? need-attention-state))
 
+
+;;; Pooping
+(define pooping-state (make-state
+  (lambda () (begin 
+    (puts "I'm pooping")))
+  (lambda () (begin
+    (puts "Finished my poo")))
+  (make-fsm-transition 'heartbeat always awake-state)))
+
 ;;; Initialization
 (define boot-state (make-state
-  (lambda () (puts "Boot..."))
+  do-nothing
   (lambda () (begin
     ; Set I/O directions
     (for-each (lambda (ledbut) 
