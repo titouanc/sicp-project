@@ -23,12 +23,12 @@
 (define led-pin caddr)
 
 ; Light named led
-(define (show color)
-  (set-pin! (led-pin (assoc color ledbuttons))))
+(define (show . colors)
+  (for-each (lambda (color) (set-pin! (led-pin (assoc color ledbuttons)))) colors))
 
 ; Shadow named led
-(define (hide color)
-  (clear-pin! (led-pin (assoc color ledbuttons))))
+(define (hide . colors)
+  (for-each (lambda (color) (clear-pin! (led-pin (assoc color ledbuttons)))) colors))
 
 ; -> f(x in [from-min..from-max]) -> y in [to-min..to-max]
 (define (remap from-min from-max to-min to-max)
