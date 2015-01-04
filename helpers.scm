@@ -39,13 +39,3 @@
 
 (define (<f a b) (< (inexact->exact a) (inexact->exact b)))
 (define (>f a b) (> (inexact->exact a) (inexact->exact b)))
-
-(define (if-changed changed? act)
-  (let ((last-value (sense)))
-    (lambda (current-value)
-      (if (change? last-value current-value)
-        (begin
-          (act current-value)
-          (set! last-value current-value)
-          #t)
-        #f))))
