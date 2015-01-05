@@ -108,6 +108,11 @@
       (fill-rectangle! 85 98 24 24 #xfff))
     (fill-rectangle! 54 87 53 43 #xfff)))
 
+(define (draw-nth-poop n) 
+  (fill-rectangle! (+ 3 (* n 7)) 0 5 4 #xa30))
+
+(define (clear-poops) (fill-rectangle! 0 0 130 4 #xfff))
+
 (define draw-rest (make-bar 5 5 120 5 1 #x00f))
 (define draw-submission (make-bar 5 11 120 5 1 #xf0f))
 (define draw-food (make-bar 5 17 120 5 1 #x0ff))

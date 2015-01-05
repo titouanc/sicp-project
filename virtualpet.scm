@@ -11,9 +11,21 @@
 (define food 0.75)
 (define health 0.75)
 (define rest 0.75)
+
+; Pooping state
 (define poops 0)
+(define last-poop 0)
+(define toilet-trained 0)
 
 (define (all-aptitudes) (list happiness submission food health rest))
+(define (all-aptitudes-dict) (list
+  (cons "happiness" happiness)
+  (cons "submission" submission)
+  (cons "food" food)
+  (cons "health" health)
+  (cons "rest" rest)
+  (cons "toilet-trained" toilet-trained)
+  (cons "poops" poops)))
 
 (define (draw-aptitudes) (begin
   (draw-happiness happiness)
@@ -39,6 +51,7 @@
     (set! rest (incx rest 2))
     (set! happiness (dec happiness))
     (set! food (dec food))
+    (set! health (incx health 0.5))
     (puts "Finished sleep. Rest is now =" rest)))
   (make-fsm-transition 'heartbeat (lambda (unused) (begin
     (clear-eyes)
@@ -46,15 +59,12 @@
     #f)) do-nothing)))
 
 (define awake-state (make-state
+  (lambda () (show 'green 'yellow 'red))
   (lambda () (begin 
-    (show 'green)
-    (show 'yellow)))
-  (lambda () (begin 
-    (hide 'green)
-    (hide 'yellow)
+    (hide 'green 'yellow 'red)
     (set! rest (dec rest))
     (set! food (decx food 2))
-    (puts "No more awake")))))
+    (set! health (decx health poops))))))
 
 (define dead-state (make-state
   (lambda () (begin 
@@ -111,8 +121,8 @@
     (puts "Finished playing")))))
 
 ; Play if green button pressed
-(awake-state 'add-transition (make-fsm-transition
-  'green identity playing-state))
+(awake-state 'add-transition (make-fsm-transition 'green (lambda (active) 
+  (and active (> submission 0.25) (> rest 0.125))) playing-state))
 
 ; Count tries, stop playing if correct button pressed
 (for-each (lambda (ledbut)
@@ -132,6 +142,7 @@
     (set! food (min 1.0 (+ food 0.25)))
     ; He doesn't like vegetables
     (set! submission (max 0.0 (- submission 0.05)))
+    (set! health (inc health))
     (delayms 500)
     (hide 'red)))
   (make-fsm-transition 'heartbeat always awake-state)))
@@ -161,15 +172,14 @@
 
 
 ;;; Need for attention
-(define (need-attention? unused)
-  (reduce or #f (list
-    (>= (state-uptime) TIME-AFFECTIVE)
-    (map (lambda (x) (< x 0.125)) (all-aptitudes)))))
+(define (need-attention? unused) 
+  (reduce or #f (map (lambda (x) (< x 0.125)) (all-aptitudes))))
 
 (define need-attention-state (make-state
   (lambda () (begin (puts "I need attention !")))
   (lambda () (begin 
     (puts "I don't need attention anymore")
+    (set! submission (inc submission))
     (set! happiness (decx happiness 2))))
   (make-fsm-transition 'accel-y always awaking-state)
   (make-fsm-transition 'accel-x always awaking-state)
@@ -181,25 +191,45 @@
     (ledname ledbut) identity awake-state)))
   ledbuttons)
 
-(for-each 
-  (lambda (state) (state 'add-transition 
-    (make-fsm-transition 'heartbeat need-attention? dead-state)))
-  (list awake-state sleeping-state))
-
+; Need for attention while awake
 (awake-state 'add-transition (make-fsm-transition 
-  'heartbeat need-attention? need-attention-state))
+  'heartbeat (lambda (unused) 
+    (or 
+      (>= (state-uptime) (* happiness TIME-AFFECTIVE)) 
+      (need-attention? unused)))
+  need-attention-state))
 
-(sleeping-state 'add-transition (make-fsm-transition 
+; Need for attention while sleeping if aptitude is critical
+(sleeping-state 'add-transition (make-fsm-transition
   'heartbeat need-attention? need-attention-state))
-
 
 ;;; Pooping
+(define (would-poop? unused)
+  (> (- (millis) last-poop) (* happiness submission POOP-PERIOD)))
+
 (define pooping-state (make-state
-  (lambda () (begin 
+  (lambda () (begin
+    (set! poops (+ 1 poops))
+    (set! last-poop (millis))
+    (draw-nth-poop poops)
     (puts "I'm pooping")))
   (lambda () (begin
     (puts "Finished my poo")))
   (make-fsm-transition 'heartbeat always awake-state)))
+
+(awake-state 'add-transition (make-fsm-transition 'heartbeat would-poop? pooping-state))
+
+;;; Toiletting
+(define toilet-state (make-state
+  (lambda () (set! toilet-trained (+ 1 toilet-trained)))
+  (lambda () (begin
+    (set! poops 0)
+    (clear-poops)
+    (inc happiness toilet-trained)
+    (animate-leds)))
+  (make-fsm-transition 'heartbeat always awake-state)))
+
+(awake-state 'add-transition (make-fsm-transition 'red identity toilet-state))
 
 ;;; Initialization
 (define boot-state (make-state
@@ -219,7 +249,9 @@
     (puts "Initialised")))
   (make-fsm-transition 'start always awaking-state)))
 
-(define dying? (lambda (x) (reduce (lambda (res x) (or res (= x 0))) #f (all-aptitudes))))
+(define (dying? unused)
+  (reduce (lambda (res item) (or res (= item 0))) #f (all-aptitudes)))
+
 (for-each 
   (lambda (state) (state 'add-transition 
     (make-fsm-transition 'heartbeat dying? dead-state)))
