@@ -205,7 +205,7 @@
 
 ;;; Pooping
 (define (would-poop? unused)
-  (> (- (millis) last-poop) (* happiness submission POOP-PERIOD)))
+  (> (- (millis) last-poop) (* (- 1.5 food) submission POOP-PERIOD)))
 
 (define pooping-state (make-state
   (lambda () (begin

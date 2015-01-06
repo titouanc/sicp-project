@@ -5,16 +5,15 @@ digraph virtualpet {
     Awake -> AwakeFlipped [label="accelY > 0.5", color="cyan"];
     AwakeFlipped -> Awake [label="accelY < 0.3", color="cyan"];
     AwakeFlipped -> Sleeping [label="accelY < 0.3 && dT > 1.5s"];
-
     Sleeping -> SleepingFlipped [label="accelY > 0.5", color="cyan"];
     SleepingFlipped -> Sleeping [label="accelY < 0.3", color="cyan"];
     SleepingFlipped -> Awaking [label="accelY < 0.3 && dT > 1.5s"];
 
-    Awake -> Play [label="button", color="green"];
+    Awake -> Play [label="button && submission", color="green"];
     Play -> Awake [label="correct button"];
 
-    Sleeping -> NeedAttention [label="heartbeat", color="pink"];
-    Awake -> NeedAttention [label="heartbeat", color="pink"];
+    Sleeping -> NeedAttention [label="aptitude critical", color="pink"];
+    Awake -> NeedAttention [label="aptitude critical or no interaction", color="pink"];
     NeedAttention -> Awake [label="NOT heartbeat"];
 
     Awake -> ChooseFood [label="button", color="yellow"];
@@ -23,9 +22,6 @@ digraph virtualpet {
     Snack -> Awake [label="heartbeat", color="pink"];
     Meal -> Awake [label="heartbeat", color="pink"];
 
-    Awake -> Revolt [label="heartbeat submission<0.1", color="pink"];
-    Revolt -> Awake [label="hug", color="cyan"];
-
     Awake -> Dead [label="dying", color="pink"];
     Sleeping -> Dead [label="dying", color="pink"];
     Play -> Dead [label="dying", color="pink"];
@@ -33,4 +29,7 @@ digraph virtualpet {
 
     Awake -> Pooping [label="random", color="pink"];
     Pooping -> Awake [label="heartbeat", color="pink"];
+
+    Awake -> Toilet [label="button", color="red"];
+    Toilet -> Awake [label="heartbeat", color="pink"];
 }

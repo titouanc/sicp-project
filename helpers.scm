@@ -4,7 +4,12 @@
 
 (define (puts . texts) (begin (map display texts) (newline)))
 
-(define (rand n) (modulo (pulse_in x-pin) n))
+(define (random-generator seed)
+  (lambda (n) (begin
+    (set! seed (+ (pulse_in x-pin) seed))
+    (modulo seed n))))
+
+(define rand (random-generator 382957))
 
 (define (int x)
   (if (= x 0) 0 (round (inexact->exact x))))
